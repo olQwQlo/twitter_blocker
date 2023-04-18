@@ -62,11 +62,11 @@ def login_twitter(restart=False):
     global driver
     #restartがTrueの場合はブラウザを再起動する
     if restart:
+        print("ブラウザを更新します")
         driver.close()
         driver.quit()
-        time.sleep(10)
+        time.sleep(3)
         driver = init_browser()
-        print("ブラウザを再起動しました")
         print("5分待機します")
         count = 5
         while count > 0:
@@ -124,9 +124,10 @@ def login_twitter(restart=False):
         return None
     finally:
         #再度ブラウザを再起動する
+        print("ブラウザを再起動します")
         driver.close()
         driver.quit()
-        time.sleep(10)
+        time.sleep(3)
         driver = init_browser()
         print("ブラウザを再表示します")
 
