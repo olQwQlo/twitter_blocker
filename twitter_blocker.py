@@ -208,26 +208,45 @@ def login_twitter(driver: webdriver.Chrome):
                 if pattern.search(driver.page_source):
                     print('ログインに成功しました')
                     return driver
-            elif driver.current_url in 'login':
-                
-                # ログイン情報を入力
-                # ユーザー名入力後でなければパスワードの入力はできない
-                #ユーザー名入力
-                time.sleep(2)
-                username_input = driver.find_element(By.NAME, "text")
-                username_input.click()
-                username_input.send_keys(username)
-                username_input.send_keys(Keys.ENTER)
+        elif driver.current_url == 'https://twitter.com/i/flow/login':
+            
+            # ログイン情報を入力
+            # ユーザー名入力後でなければパスワードの入力はできない
+            #ユーザー名入力
+            time.sleep(2)
+            username_input = driver.find_element(By.NAME, "text")
+            username_input.click()
+            username_input.send_keys(username)
+            username_input.send_keys(Keys.ENTER)
 
-                #パスワード入力
-                time.sleep(2)
-                password_input = driver.find_element(By.NAME, "password")
-                password_input.click()
-                password_input.send_keys(password)
-                password_input.send_keys(Keys.ENTER)
+            #パスワード入力
+            time.sleep(2)
+            password_input = driver.find_element(By.NAME, "password")
+            password_input.click()
+            password_input.send_keys(password)
+            password_input.send_keys(Keys.ENTER)
+        elif driver.current_url == 'https://twitter.com/account/access':
+            # reCAPTCHA認証にリダイレクトさせられた場合
+            print('reCAPTCHA認証にリダイレクトされました')
+            print('手動で認証を行ってください')
+            input('認証を完了させ、いずれかのキーを押してください')
+            if driver.current_url == 'https://twitter.com/home':
+                print('ログインに成功しました')
+                return driver
             else:
-                print('ログインに失敗しました')
-                return None
+                print('認証が未完了です')
+                print('もう一度待機します。ホーム画面に遷移してから、いずれかのキーを押してください')
+                input('認証を完了させ、いずれかのキーを押してください')
+                if driver.current_url == 'https://twitter.com/home':
+                    print('ログインに成功しました')
+                    return driver
+            print('認証に失敗しました')
+            print('ブラウザを終了します')
+            driver.quit()
+            return None
+        else:
+            print('不明なURLです')
+            print(f'URL: {driver.current_url}')
 
         # ログインに成功したか確認
         time.sleep(2)
@@ -404,8 +423,10 @@ def main():
             # 結果を格納する
             result_list = []
             result = ""
-            count = 0
+            total_count = 0 #総処理数
+            count = 0 #サーバー負荷軽減のため200回ごとに停止するためのカウンター
             for username in username_list: #ブロック処理のループ
+                total_count += 1
                 count += 1
                 result = block_user(driver,username)
                 if result is not None:
@@ -429,8 +450,11 @@ def main():
                     # 5分待機
                     #待機時間、再開時刻はwait関数内で表示
                     wait(300)
+                    #カウンターをリセット
+                    count = 0
+                #total_countを空白埋めで5桁にする
                 #countを空白埋めで3桁にする
-                print(f"{str(count).zfill(3)}:{result}")
+                print(f"total_count:{str(total_count).rjust(5,' ')},count:{str(count).rjust(3,' ')}:{result}")
             #ブロック処理のループ終了
             print("ブロック処理が完了しました")
 
