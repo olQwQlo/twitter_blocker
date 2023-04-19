@@ -225,6 +225,18 @@ def login_twitter(driver: webdriver.Chrome):
             password_input.click()
             password_input.send_keys(password)
             password_input.send_keys(Keys.ENTER)
+
+            #「認証コード」の文字列があるか確認
+            pattern = re.compile(r'認証コード')
+            if pattern.search(driver.page_source):
+                # 認証コードを入力
+                print('認証コードを入力してください')
+                auth_code = input('認証コードを入力してください: ')
+                auth_code_input = driver.find_element(By.NAME, "text")
+                auth_code_input.click()
+                auth_code_input.send_keys(auth_code)
+                auth_code_input.send_keys(Keys.ENTER)
+                
         elif driver.current_url == 'https://twitter.com/account/access':
             # reCAPTCHA認証にリダイレクトさせられた場合
             print('reCAPTCHA認証にリダイレクトされました')
@@ -286,7 +298,7 @@ def block_user(driver:webdriver.Chrome ,username) -> Optional[str]  :
     """
     url = 'https://twitter.com/' + username
     driver.get(url)
-    time.sleep(2)
+    time.sleep(1)
     
     try:
         #aria-label="もっと見る"をクリック
@@ -294,7 +306,7 @@ def block_user(driver:webdriver.Chrome ,username) -> Optional[str]  :
         driver.find_element(By.CSS_SELECTOR, more_look).click()
     except:
         #1秒待機してリトライ
-        time.sleep(1)
+        time.sleep(0.5)
         try:
             #aria-label="もっと見る"をクリック
             more_look = '[aria-label="もっと見る"]'
@@ -344,12 +356,14 @@ def block_user(driver:webdriver.Chrome ,username) -> Optional[str]  :
 
     #ブロックを実行
     try:
+        time.sleep(0.2)  # import time
         pattern = r'(@.*さんをブロック)'
         span_elements = driver.find_elements(By.TAG_NAME, 'span')
         for span_element in span_elements:
             match = re.search(pattern, span_element.text)
             if match:
                 span_element.click()
+                time.sleep(0.2)
                 span_elements_2 = driver.find_elements(By.TAG_NAME, 'span')
                 for span_element_2 in span_elements_2:
                     if span_element_2.text == 'ブロック':
