@@ -11,7 +11,15 @@ import json
 import re
 import random
 
-driver = None
+
+# 待機関数
+def wait(seconds):
+    #小数点だ1位までの分に変換
+    minutes = round(seconds / 60, 1)
+    print(str(minutes) + '分待機します')
+    print(f'再開時刻は{time.strftime("%H:%M:%S", time.localtime(time.time() + seconds))}です')
+    time.sleep(seconds)
+    print('再開します')
 
 #ブラウザを初期化する
 def init_browser():
@@ -58,21 +66,7 @@ def get_login_info():
         return None
 
 # Twitterにログインする
-def login_twitter(restart=False):
-    global driver
-    #restartがTrueの場合はブラウザを再起動する
-    if restart:
-        print("ブラウザを更新します")
-        driver.close()
-        driver.quit()
-        time.sleep(3)
-        driver = init_browser()
-        print("5分待機します")
-        count = 5
-        while count > 0:
-            print(f"{count}分待機中")
-            time.sleep(60)
-            count -= 1
+def login_twitter(driver: webdriver.Chrome):
     try:
         # ログイン情報を取得
         login_info = get_login_info()
@@ -90,27 +84,52 @@ def login_twitter(restart=False):
         time.sleep(2)
 
         if driver.current_url == 'https://twitter.com/home':
-            print("profileを元にログイン")
-        else:
-            # ログイン情報を入力
-            #ユーザー名入力
+            # 画面の要素からログインが完了しているか確認
+            #「おすすめ」の文字列があるか確認
+            pattern = re.compile(r'おすすめ')
+            if pattern.search(driver.page_source):
+                print('ログインに成功しました')
+                return driver
+        
+        # ログインに失敗している場合
+        # ブラウザを初期化して再度ログインを試みる
+            # driverのUAを変更する
+            driver.quit()
+            time.sleep(3)
+            driver = init_browser()
+            driver.get('https://twitter.com/home')
             time.sleep(2)
-            username_input = driver.find_element(By.NAME, "text")
-            username_input.click()
-            username_input.send_keys(username)
-            #エンターキーを押す
-            time.sleep(2)
-            username_input.send_keys(Keys.ENTER)
+            if driver.current_url == 'https://twitter.com/home':
+                # 画面の要素からログインが完了しているか確認
+                #「おすすめ」の文字列があるか確認
+                pattern = re.compile(r'おすすめ')
+                if pattern.search(driver.page_source):
+                    print('ログインに成功しました')
+                    return driver
+            elif driver.current_url in 'login':
+                
+                # ログイン情報を入力
+                #ユーザー名入力
+                time.sleep(2)
+                username_input = driver.find_element(By.NAME, "text")
+                username_input.click()
+                username_input.send_keys(username)
+                #エンターキーを押す
+                time.sleep(2)
+                username_input.send_keys(Keys.ENTER)
 
-            #パスワード入力
-            time.sleep(2)
-            password_input = driver.find_element(By.NAME, "password")
-            password_input.click()
-            password_input.send_keys(password)
-            #エンターキーを押す
-            time.sleep(2)
-            password_input.send_keys(Keys.ENTER)
-            time.sleep(2)
+                #パスワード入力
+                time.sleep(2)
+                password_input = driver.find_element(By.NAME, "password")
+                password_input.click()
+                password_input.send_keys(password)
+                #エンターキーを押す
+                time.sleep(2)
+                password_input.send_keys(Keys.ENTER)
+                time.sleep(2)
+            else:
+                print('ログインに失敗しました')
+                return None
 
         # ログインに成功したか確認
         if driver.current_url == 'https://twitter.com/home':
@@ -122,18 +141,9 @@ def login_twitter(restart=False):
     except Exception as e:
         print(e)
         return None
-    finally:
-        #再度ブラウザを再起動する
-        print("ブラウザを再起動します")
-        driver.close()
-        driver.quit()
-        time.sleep(3)
-        driver = init_browser()
-        print("ブラウザを再表示します")
 
 #特定のユーザーをブロックする
-def block_user(username):
-    global driver
+def block_user(driver:webdriver.Chrome ,username):
     url = 'https://twitter.com/' + username
     driver.get(url)
     time.sleep(2)
@@ -158,7 +168,7 @@ def block_user(username):
                 match = re.search(pattern, span_element.text)
                 if match:
                     #ブラウザを再起動する
-                    driver = login_twitter(restart=True)
+                    driver = login_twitter(driver)
             #「このアカウントは存在しません」がspanタグに入っているか確認
             pattern = re.compile(r'このアカウントは存在しません')
             span_elements = driver.find_elements(By.TAG_NAME, 'span')
@@ -185,7 +195,7 @@ def block_user(username):
                     return result
             #上記以外の場合はログアウトしている可能性があるのでログインし直す
             #問題がなければdriverを更新し処理を続行する
-            driver = login_twitter(restart=True)
+            driver = login_twitter(driver)
             if driver is None:
                 print('Twitterにログインできませんでした')
                 result = f"{username},{time.strftime('%Y/%m/%d %H:%M:%S')},login failed"
@@ -214,14 +224,21 @@ def block_user(username):
 
 # メイン処理
 def main():
-    global driver
     try:
         # Twitterにログイン
         driver = init_browser()
-        login_twitter()
         if driver is None:
-            print('Twitterにログインできませんでした')
+            print('ブラウザを起動できませんでした')
             return
+        
+        if login_twitter(driver) is None:
+            print('Twitterにログインできませんでした')
+            return 1
+        # home画面に遷移したことを確認済
+        # 「おすすめ」のspanタグがあるかを確認している
+        # ない場合：ロードが続くなどでログインできていない可能性がある
+
+        
         # ログイン後の処理を記述
         # username_listからユーザー名を取得
         username_list = []
@@ -259,12 +276,14 @@ def main():
             result = ""
             # 200回ブロックしたら5分待機
             count = 0
-            for username in username_list:
+            for username in username_list: #ブロック処理のループ
                 count += 1
                 result = block_user(username)
                 if result is not None:
                     result_list.append(result)
                 else:
+                    #再起動に備えてprofileを利用できるよう、実行中のブラウザを閉じる
+                    driver.quit()
                     print(f"{username}のブロックに失敗しました")
                     print("再ログインにも失敗した可能性があります")
                     print("ログイン状態を確認してください")
@@ -275,23 +294,24 @@ def main():
                     driver.quit()
                     time.sleep(5)
                     driver = init_browser()
-                    login_twitter()
+                    login_twitter(driver)
                     if driver is None:
                         print('Twitterにログイラできない')
                     print("5分待機します")
                     wait_minutes = 5
-                    while wait_minutes > 0:
-                        print(f"{wait_minutes}分待機中")
-                        time.sleep(60)
-                        wait_minutes -= 1
-                    count = 0
+                    print('f{wait_minutes}分待機します')
+                    restart_time = time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(time.time() + 60 * wait_minutes))
+                    print(f'再開時間は{restart_time}です')
                 #countを空白埋めで3桁にする
                 print(f"{str(count).zfill(3)}:{result}")
+            #ブロック処理のループ終了
+            print("ブロック処理が完了しました")
 
             return 0
         except KeyboardInterrupt as e:
             print(e)
-            return 0
+            return 100
+
         except Exception as e:
             print(e)
             return 1
@@ -307,16 +327,18 @@ if __name__ == '__main__':
     retry_count = 0
     while True:
         try:
-            if main() == 0:
+            ret = main()
+            if ret == 0:
                 print("main()が正常に終了しました")
                 break
-            else:
-                driver.quit()
-                if main() == 0:
-                    print("main()が正常に終了しました")
-                    continue
+
+            elif ret == 1:
                 print("main()が異常終了しました")
-            time.sleep(10)
+                time.sleep(10)
+
+            elif ret == 100: #手動中断は100番台
+                print("処理を中断します")
+                break
             retry_count = 0
         except KeyboardInterrupt:
             print('処理を終了します')
@@ -329,15 +351,17 @@ if __name__ == '__main__':
                 print(f'リトライします。{retry_count}回目')
 
                 try:
-                    count = 5
-                    while count > 0:
-                        print(f"{count}分待機中")
-                        time.sleep(60)
-                        count -= 1
+                    minute = 5
+                    print(f"{minute}分待機中")
+                    restart_time = time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(time.time() + minute * 60 ))
+                    print(f"再開時刻は{restart_time}です")
+                    time.sleep(minute * 60)
+                    print('再開します')
+
                 except KeyboardInterrupt:
                     print('処理を中断します')
                     break
             else:
                 print(e)
-                print('リトライしましたが、処理を終了します')
+                print('最大リトライ回数を超えました。\n処理を終了します')
                 break
