@@ -11,6 +11,21 @@ import json
 import re
 import random
 
+# 概要: Twitterにログインしてブロックを行う
+# 200回ブロックしたら5分待機
+# 1ブロック処理につき約3秒かかる
+# (3sec * 200) / 60 = 10min
+# 10min + 5min = 15min/loop
+# 1時間に200*4=800ブロック
+# 24時間に200*4*24=19200ブロックが理論値
+# 実際は途中で強制ログアウトによる再ログインが発生するため
+# 理論値よりは少なくなる
+
+# 必要なライブラリとインストール方法
+# pip install selenium
+# pip install webdriver-manager
+# pip install chromedriver-binary
+
 
 # 待機関数
 def wait(seconds):
@@ -251,11 +266,33 @@ def main():
                 pass
             print('username_list.txtを作成しました')
             print('ブロック対象のusernameを改行区切りで記述してください')
+            input('キーを押して終了します')
             return 0
-        with open('username_list.txt', 'r') as f:
-            for line in f:
-                username_list.append(line.strip())
+        else: #ファイルが存在する場合
+            with open('username_list.txt', 'r') as f:
+                for line in f:
+                    username_list.append(line.strip())
+
+        # result.csvの存在チェック
+        if not os.path.exists('result.csv'):
+            print('result.csvが存在しません')
+            print('ファイルを作成します\n')
+            with open('result.csv', 'w') as f:
+                #作成だけするので何もしない
+                pass
+            print('result.csvを作成しました')
+            print('ブロックしたusernameを記録します')
+            print('ブロックしたusername,ブロック日時,ブロック結果')
+            print('ブロック結果は以下のいずれかです\n')
+            print('suspended:アカウントが凍結されている')
+            print('not found account:アカウントが存在しない')
+            print('not found page:ページが存在しない')
+            print('login failed:ログインに失敗した')
+            print('block success:ブロックに成功した')
+            print('already blocked:すでにブロック済み')
+            print('\n以上です')
         # result.csvから除外対象を取得
+        # 空でも問題ない
         exclude_list = []
         with open('result.csv', 'r') as f:
             for line in f:
@@ -274,7 +311,6 @@ def main():
             # 結果を格納する
             result_list = []
             result = ""
-            # 200回ブロックしたら5分待機
             count = 0
             for username in username_list: #ブロック処理のループ
                 count += 1
