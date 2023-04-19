@@ -4,6 +4,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from typing import Optional
 
 import time
 import os
@@ -27,17 +28,54 @@ import random
 # pip install chromedriver-binary
 
 
-# 待機関数
 def wait(seconds):
-    #小数点だ1位までの分に変換
+    """
+    指定した秒数待機する
+
+    Args:
+        seconds (int): 待機する秒数
+
+    Raises:
+        KeyboardInterrupt: キーボードからの割り込みが発生した場合
+
+    Returns:
+        None
+
+    Example:
+        >>> wait(600)
+        # 10分待機します
+        # 再開時刻は23:30:00です
+        # 再開します
+
+    Dependencies:
+        - time
+    """
+    # 小数点だ1位までの分に変換
     minutes = round(seconds / 60, 1)
     print(str(minutes) + '分待機します')
     print(f'再開時刻は{time.strftime("%H:%M:%S", time.localtime(time.time() + seconds))}です')
     time.sleep(seconds)
     print('再開します')
 
+
+
 #ブラウザを初期化する
 def init_browser():
+    """
+    ブラウザを初期化する
+
+    Returns:
+        selenium.webdriver.chrome.webdriver.WebDriver: ブラウザのウィンドウ
+
+    Example:
+        >>> driver = init_browser()
+
+    Dependencies:
+        - os
+        - random
+        - time
+        - selenium.webdriver.chrome.webdriver.WebDriver
+    """
     options = webdriver.ChromeOptions()
     # profileを指定
     # ファイルパスをこのディレクトに変更
@@ -70,18 +108,68 @@ def init_browser():
 
 # ログイン情報を取得
 def get_login_info():
+    """
+    ログイン情報を取得する。
+
+    ログイン情報が保存されているファイル(`login_info.json`)を読み込み、その内容を辞書形式で返す。\n  
+    ファイルが存在しない場合は、ユーザーにユーザー名とパスワードを入力してもらい、それらの情報を`login_info.json`に保存した上で返す。
+
+    Returns:
+    --------
+        dict: ログイン情報(`username`と`password`をキーに持つ辞書)
+                ファイルが存在しない場合は、ユーザーが入力したユーザー名とパスワードを保存した辞書
+
+    Raises:
+    -------
+        Exception: ファイルが存在しているが、読み込みに失敗した場合
+
+    Examples:
+    ---------
+        >>> get_login_info()
+        $ユーザー名を入力してください: testuser
+        $パスワードを入力してください: testpassword
+        {'username': 'testuser', 'password': 'testpassword'}
+
+    """
     try:
         # ファイルパスをこのディレクトに変更
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
-        with open('login_info.json', 'r') as f:
-            login_info = json.load(f)
-        return login_info
+        #ファイルが存在しない場合は作成する
+        if not os.path.exists('login_info.json'):
+            with open('login_info.json', 'w') as f:
+                # ログイン情報を入力
+                username = input('ユーザー名を入力してください: ')
+                password = input('パスワードを入力してください: ')
+                login_info = {
+                    'username': username,
+                    'password': password
+                }
+                json.dump(login_info, f)
+                return login_info
+        # ログイン情報を取得
+        else:
+            with open('login_info.json', 'r') as f:
+                login_info = json.load(f)
+                return login_info
     except Exception as e:
         print(e)
         return None
 
 # Twitterにログインする
 def login_twitter(driver: webdriver.Chrome):
+    """
+    Twitterにログインする関数。
+
+    Parameters:
+    -----------
+    driver : webdriver.Chrome
+        WebDriverのインスタンス。
+
+    Returns:
+    --------
+    driver : webdriver.Chrome
+        ログイン後のWebDriverのインスタンス。ログインに失敗した場合はNoneを返す。
+    """
     try:
         # ログイン情報を取得
         login_info = get_login_info()
@@ -97,7 +185,6 @@ def login_twitter(driver: webdriver.Chrome):
         driver.get('https://twitter.com/home')
 
         time.sleep(2)
-
         if driver.current_url == 'https://twitter.com/home':
             # 画面の要素からログインが完了しているか確認
             #「おすすめ」の文字列があるか確認
@@ -124,13 +211,12 @@ def login_twitter(driver: webdriver.Chrome):
             elif driver.current_url in 'login':
                 
                 # ログイン情報を入力
+                # ユーザー名入力後でなければパスワードの入力はできない
                 #ユーザー名入力
                 time.sleep(2)
                 username_input = driver.find_element(By.NAME, "text")
                 username_input.click()
                 username_input.send_keys(username)
-                #エンターキーを押す
-                time.sleep(2)
                 username_input.send_keys(Keys.ENTER)
 
                 #パスワード入力
@@ -138,15 +224,13 @@ def login_twitter(driver: webdriver.Chrome):
                 password_input = driver.find_element(By.NAME, "password")
                 password_input.click()
                 password_input.send_keys(password)
-                #エンターキーを押す
-                time.sleep(2)
                 password_input.send_keys(Keys.ENTER)
-                time.sleep(2)
             else:
                 print('ログインに失敗しました')
                 return None
 
         # ログインに成功したか確認
+        time.sleep(2)
         if driver.current_url == 'https://twitter.com/home':
             print('ログインに成功しました')
             return driver
@@ -158,7 +242,29 @@ def login_twitter(driver: webdriver.Chrome):
         return None
 
 #特定のユーザーをブロックする
-def block_user(driver:webdriver.Chrome ,username):
+def block_user(driver:webdriver.Chrome ,username) -> Optional[str]  :
+    """
+    ツイッターの指定されたユーザーをブロックする。
+
+    Parameters
+    ----------
+    driver : webdriver.Chrome
+        ブラウザのWebDriverオブジェクト
+    username : str
+        ブロックするユーザーのユーザー名
+
+    Returns
+    -------
+    Optional[str]
+        ブロックの処理結果を "username,date,status" の形式で返す。
+        status は以下のいずれかの文字列である。
+        - "block success" : ユーザーがブロックされた場合。
+        - "already blocked" : 既にユーザーがブロックされていた場合。
+        - "not found account" : 指定されたユーザーが存在しなかった場合。
+        - "not found page" : 指定されたユーザーのプロフィールページが存在しなかった場合。
+        - "suspended" : 指定されたユーザーが凍結されていた場合。
+        - "login failed" : ログインに失敗した場合。
+    """
     url = 'https://twitter.com/' + username
     driver.get(url)
     time.sleep(2)
@@ -244,15 +350,11 @@ def main():
         driver = init_browser()
         if driver is None:
             print('ブラウザを起動できませんでした')
-            return
+            return 1
         
         if login_twitter(driver) is None:
             print('Twitterにログインできませんでした')
             return 1
-        # home画面に遷移したことを確認済
-        # 「おすすめ」のspanタグがあるかを確認している
-        # ない場合：ロードが続くなどでログインできていない可能性がある
-
         
         # ログイン後の処理を記述
         # username_listからユーザー名を取得
@@ -262,8 +364,7 @@ def main():
             print('username_list.txtが存在しません')
             print('ファイルを作成します')
             with open('username_list.txt', 'w') as f:
-                #作成だけするので何もしない
-                pass
+                pass #作成のみ
             print('username_list.txtを作成しました')
             print('ブロック対象のusernameを改行区切りで記述してください')
             input('キーを押して終了します')
@@ -282,15 +383,7 @@ def main():
                 pass
             print('result.csvを作成しました')
             print('ブロックしたusernameを記録します')
-            print('ブロックしたusername,ブロック日時,ブロック結果')
-            print('ブロック結果は以下のいずれかです\n')
-            print('suspended:アカウントが凍結されている')
-            print('not found account:アカウントが存在しない')
-            print('not found page:ページが存在しない')
-            print('login failed:ログインに失敗した')
-            print('block success:ブロックに成功した')
-            print('already blocked:すでにブロック済み')
-            print('\n以上です')
+            print('sample: username,date,status')
         # result.csvから除外対象を取得
         # 空でも問題ない
         exclude_list = []
@@ -314,7 +407,7 @@ def main():
             count = 0
             for username in username_list: #ブロック処理のループ
                 count += 1
-                result = block_user(username)
+                result = block_user(driver,username)
                 if result is not None:
                     result_list.append(result)
                 else:
@@ -333,11 +426,9 @@ def main():
                     login_twitter(driver)
                     if driver is None:
                         print('Twitterにログイラできない')
-                    print("5分待機します")
-                    wait_minutes = 5
-                    print('f{wait_minutes}分待機します')
-                    restart_time = time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(time.time() + 60 * wait_minutes))
-                    print(f'再開時間は{restart_time}です')
+                    # 5分待機
+                    #待機時間、再開時刻はwait関数内で表示
+                    wait(300)
                 #countを空白埋めで3桁にする
                 print(f"{str(count).zfill(3)}:{result}")
             #ブロック処理のループ終了
@@ -345,7 +436,7 @@ def main():
 
             return 0
         except KeyboardInterrupt as e:
-            print(e)
+            driver.quit()
             return 100
 
         except Exception as e:
@@ -376,9 +467,11 @@ if __name__ == '__main__':
                 print("処理を中断します")
                 break
             retry_count = 0
+
         except KeyboardInterrupt:
             print('処理を終了します')
             break
+
         except Exception as e:
             #リトライは4回まで
             
@@ -387,12 +480,9 @@ if __name__ == '__main__':
                 print(f'リトライします。{retry_count}回目')
 
                 try:
-                    minute = 5
-                    print(f"{minute}分待機中")
-                    restart_time = time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(time.time() + minute * 60 ))
-                    print(f"再開時刻は{restart_time}です")
-                    time.sleep(minute * 60)
-                    print('再開します')
+                    # 5分待機
+                    #待機時間、再開時刻はwait関数内で表示
+                    wait(300)
 
                 except KeyboardInterrupt:
                     print('処理を中断します')
