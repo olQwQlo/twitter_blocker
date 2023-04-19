@@ -362,7 +362,7 @@ def main():
         #ファイルの存在チェック
         if not os.path.exists('username_list.txt'):
             print('username_list.txtが存在しません')
-            print('ファイルを作成します')
+            print('空のファイルを作成します')
             with open('username_list.txt', 'w') as f:
                 pass #作成のみ
             print('username_list.txtを作成しました')
