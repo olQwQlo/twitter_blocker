@@ -3,9 +3,9 @@
 ## 使い方
 1. このリポジトリをクローンする
 2. login_info.jsonを作成する(詳細はsampleを参照)
-3. `python3 twitter_block.py`を実行する
+3. `python3 main.py`を実行する
 4. username_list.txtが生成されるので、ブロックしたいユーザー名を追記する
-5. `python3 twitter_block.py`を実行する
+5. `python3 main.py`を実行する
 
 ## login_info.jsonの書き方
 ```json
