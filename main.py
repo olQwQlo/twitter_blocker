@@ -18,6 +18,8 @@ def main():
         
     # ログイン後の処理を記述
     # ブロック対象を収集するためのリンクを入力する
+    print('注意：当ツールによって不利益が発生しても責任は負いかねます')
+    print('sample: https://twitter.com/username/followers')
     target_link = input('userIDを取得する対象のリンクを入力してください: ')
     driver.get(target_link)
     wait(3)
