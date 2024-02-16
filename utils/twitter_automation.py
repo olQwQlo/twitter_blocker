@@ -168,7 +168,7 @@ def extract_following_user_ids(html_content: str) -> list:
     
     # Extract the section with aria-label "タイムライン: フォロワー"
     follower_section_element = soup.find(attrs={"aria-label": "タイムライン: フォロワー"})
-    like_section_element = soup.find(attrs={"aria-label": "タイムライン: いいねしたユーザー"})
+    like_section_element = soup.find(attrs={"aria-label": "タイムライン: いいね"})
     section_element = []
     # If the section is not found, return an empty list
     if not follower_section_element:
